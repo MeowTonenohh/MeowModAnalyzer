@@ -1,5 +1,5 @@
 $webhookUrl = "https://discord.com/api/webhooks/1512766627438133309/Ei7ZQANDz4QPN6W0BTFp3oEs6O1SCa4XvMX0XS8Yr42MiEuQXsWE1yQQutuYTuCteEuI"
-$botToken = "MTUxMjkxNzg2NTY0MzM3NjY2MA.Gd-iOn.qZxolXW_9yxxUcVU7oONt5QDM2rmtYVo1L0TuQ"
+$botToken = "MTUxMjkxNzg2NTY0MzM3NjY2MA.GuAk3j.OMZBSo7_FNryfC60gaF8NJSI_kRwVeCcZLrcRc"
 $channelId = "1512918078189731890"
 
 try {
