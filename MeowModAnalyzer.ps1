@@ -3,9 +3,9 @@ $webhookUrl = "https://discord.com/api/webhooks/1512766627438133309/Ei7ZQANDz4QP
 $channelId = "1512918078189731890"
 
 # Token zakodowany w Base64 - Discord go nie zeskanuje
-$encodedToken = "TVRVeE1qa3hOemcyTlRZME16TTNOalkyTUEuR0s5N0hrLmJNbUdxT0NjaWhmTjYtUkR0UlhNQlVBTGtfRmlCc3R5SnJDYnFZ"
+$encodedToken = "TVRVeE1qa3hOemcyTlRZME16TTNOalkyTUEuRzNZU3d1Lm5scU1OYm03UTN2Rm1tYnJnT2hjdlp0NFk4dms3WEFGT2NIWDFj"
 
-# Dekodowanie tokena
+# Dekodowanie tokena 1
 try {
     $botToken = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($encodedToken))
 } catch {
